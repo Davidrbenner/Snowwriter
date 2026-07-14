@@ -2,20 +2,20 @@
 
 Snowwriter is a sleek, professional, distraction-free AI-powered grammar checker and text rewriting application. It features a modern, ultra-clean "Icy" design built with **React**, **Vite**, and **Tailwind CSS**. 
 
-Snowwriter is built with an **Offline-First / Zero-Hosting / Local-Inference** model in mind, giving you the choice between using Google Cloud's fast **Gemini 3 Flash** or running models **100% locally** in your browser via WebGPU or connecting to an existing **Ollama** installation.
+Snowwriter is built with an **Offline-First / Zero-Hosting / Local-Inference** model in mind, giving you the choice between using Google Cloud's fast **Gemini 3 Flash** or connecting to an existing local **Ollama** installation. An in-browser **WebGPU** engine is planned (the current UI for it is a demo — see Features below).
 
 ---
 
 ## ✨ Features
 
 - **Triple-Model Engine Choice**:
-  - **Google Cloud**: Powered by the Gemini API for fast, high-accuracy editing.
-  - **WebGPU Neural Core**: Download model weights (like Gemma 2B, Llama 3.2, or Phi-3.5) directly into your browser's persistent cache. Once downloaded, inference is computed 100% locally on your graphics chip—zero data leaves your device.
-  - **Ollama Integration**: Connect seamlessly to your personal pre-installed Ollama daemon runtime (e.g. at `http://localhost:11434`) and point it to any custom downloaded model tag.
+  - **Google Cloud**: Powered by the Gemini API for fast, high-accuracy editing. *(fully functional)*
+  - **Ollama Integration**: Point Snowwriter at a locally running Ollama daemon (e.g. at `http://localhost:11434`) and any model tag you have pulled. If an Ollama instance is reachable, requests are processed by it — 100% locally. If not, a simple built-in rule-based rewriter is used as a fallback.
+  - **WebGPU Neural Core** *(demo / UI prototype)*: The model download hub and in-browser inference are currently simulated for demonstration — no real model weights are downloaded, and processing uses the built-in rule-based rewriter. True WebGPU inference is on the roadmap.
 - **Workflow Integrations**:
   - **General Text Editor**: Simple, elegant workspace for writing.
-  - **Outlook Draft**: Interactively compose, refine, and simulated-send directly to Microsoft Outlook workflows.
-  - **Gmail Draft**: Clean, modern suite integration allowing copy-paste-free updates inside simulated Google Gmail composings.
+  - **Outlook Draft** *(simulated)*: A mock Outlook compose UI for refining email drafts. No email is actually sent.
+  - **Gmail Draft** *(simulated)*: A mock Gmail compose UI for the same workflow. No email is actually sent.
 - **Productivity Boosters**:
   - **Drag-to-Bookmark Bar**: A draggable JavaScript Web bookmarklet. Select text on any web page, click your bookmark, and it automatically imports that selection straight into your Snowwriter tab!
   - **Global Script Triggers**: Quick-copy snippets for Windows AutoHotkey and macOS AppleScript to bind global system hotkeys to Snowwriter.
@@ -94,6 +94,14 @@ The build assets (CSS, highly-compressed Javascript, static file wrappers) will 
 
 Since Snowwriter compiles into static SPA files, it can be hosted completely **free** on multiple serverless and edge networks!
 
+> ⚠️ **Security warning — your Gemini API key is embedded in the client bundle.**
+> `vite.config.ts` inlines `GEMINI_API_KEY` into the compiled JavaScript at build time, and the app calls the Gemini API directly from the browser. Anyone who visits a public deployment can extract your key from the bundle and use it at your expense.
+>
+> Only deploy the cloud engine publicly if you accept that risk. Safer options:
+> - Deploy for **personal/private use only**, and [restrict the key](https://cloud.google.com/docs/authentication/api-keys#securing) (HTTP referrer restrictions, usage quotas) in Google Cloud Console.
+> - Put the Gemini call behind a small **server-side proxy** (e.g. a serverless function) that holds the key, and have the client call the proxy instead.
+> - Ship without a key at all — the app still works with the local Ollama engine.
+
 ### Option A: Deploy to GitHub Pages (Easiest for Static Releases)
 
 If you are publishing repository pages directly to GitHub pages, you can easily set up standard GitHub Actions pipelines to deploy automatically:
@@ -132,7 +140,7 @@ Modern hosting platforms automatically detect Vite configurations and manage pip
 
 Snowwriter is built with model flexibility:
 - If someone already has standard model targets installed (such as via Ollama running in the background), they can select the **Ollama** engine tab, reference the customizable endpoint, and enter any model tag they want (like `llama3`, `mistral`, or a custom fine-tune).
-- If you'd like to adjust default WebGPU targets as newer models are released, you can easily open and modify `src/App.tsx` where models list arrays are stored—adding weight files, size rankings, and custom instructions.
+- The **WebGPU** model list in `src/App.tsx` is currently display-only (the downloads are simulated). It's the natural starting point if you want to contribute real in-browser inference — e.g. by wiring the list up to [MLC WebLLM](https://github.com/mlc-ai/web-llm) or [Transformers.js](https://github.com/huggingface/transformers.js).
 
 ---
 
