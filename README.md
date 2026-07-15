@@ -2,14 +2,13 @@
 
 Snowwriter is a sleek, professional, distraction-free AI-powered grammar checker and text rewriting application. It features a modern, ultra-clean "Icy" design built with **React**, **Vite**, and **Tailwind CSS**. 
 
-Snowwriter is built with an **Offline-First / Zero-Hosting / Local-Inference** model in mind, giving you the choice between using Google Cloud's fast **Gemini 3 Flash** or connecting to an existing local **Ollama** installation. An in-browser **WebGPU** engine is planned (the current UI for it is a demo — see Features below).
+Snowwriter is built on an **Offline-First / Zero-Hosting / Local-Inference** model: all AI processing happens on your machine by connecting to an existing local **Ollama** installation. There are **no cloud APIs and no API keys** — nothing to configure, and no text ever leaves your device. An in-browser **WebGPU** engine is planned (the current UI for it is a demo — see Features below).
 
 ---
 
 ## ✨ Features
 
-- **Triple-Model Engine Choice**:
-  - **Google Cloud**: Powered by the Gemini API for fast, high-accuracy editing. *(fully functional)*
+- **Local Engine Choice**:
   - **Ollama Integration**: Point Snowwriter at a locally running Ollama daemon (e.g. at `http://localhost:11434`) and any model tag you have pulled. If an Ollama instance is reachable, requests are processed by it — 100% locally. If not, a simple built-in rule-based rewriter is used as a fallback.
   - **WebGPU Neural Core** *(demo / UI prototype)*: The model download hub and in-browser inference are currently simulated for demonstration — no real model weights are downloaded, and processing uses the built-in rule-based rewriter. True WebGPU inference is on the roadmap.
 - **Workflow Integrations**:
@@ -38,23 +37,15 @@ cd snowwriter
 npm install
 ```
 
-### 3. Setup Environment Variables
+### 3. (Optional) Set Up Ollama
 
-Copy the example climate configuration template into your environment file:
+For real AI-powered rewriting, install [Ollama](https://ollama.com/) and pull a model:
 
 ```bash
-cp .env.example .env
+ollama pull gemma2:2b
 ```
 
-Open `.env` and configure your credentials safely (do NOT commit your real keys to git!):
-
-```env
-# Load your Google Gemini API Key
-GEMINI_API_KEY="AIzaSyYourGeminiApiKeyHere"
-
-# Set your deployed application URL (used for absolute self-references)
-APP_URL="http://localhost:3000"
-```
+No API keys or environment variables are needed — Snowwriter talks to Ollama at `http://localhost:11434` (configurable in the app's Local AI Controller panel). Without Ollama, the app still runs using a basic built-in rule-based rewriter.
 
 ### 4. Running Locally in Development
 
@@ -92,15 +83,9 @@ The build assets (CSS, highly-compressed Javascript, static file wrappers) will 
 
 ## 🌐 Deploying to GitHub & the Web
 
-Since Snowwriter compiles into static SPA files, it can be hosted completely **free** on multiple serverless and edge networks!
+Since Snowwriter compiles into static SPA files with **no API keys or secrets**, it can be hosted completely **free** on multiple serverless and edge networks — there is nothing sensitive in the bundle.
 
-> ⚠️ **Security warning — your Gemini API key is embedded in the client bundle.**
-> `vite.config.ts` inlines `GEMINI_API_KEY` into the compiled JavaScript at build time, and the app calls the Gemini API directly from the browser. Anyone who visits a public deployment can extract your key from the bundle and use it at your expense.
->
-> Only deploy the cloud engine publicly if you accept that risk. Safer options:
-> - Deploy for **personal/private use only**, and [restrict the key](https://cloud.google.com/docs/authentication/api-keys#securing) (HTTP referrer restrictions, usage quotas) in Google Cloud Console.
-> - Put the Gemini call behind a small **server-side proxy** (e.g. a serverless function) that holds the key, and have the client call the proxy instead.
-> - Ship without a key at all — the app still works with the local Ollama engine.
+> **Note on hosted deployments**: the AI engine runs on each visitor's own machine. Visitors need their own Ollama installation, and because browsers block requests from an HTTPS page to `http://localhost`, a hosted (HTTPS) copy of Snowwriter generally can't reach a local Ollama daemon — visitors will get the rule-based fallback instead. For the full experience, run Snowwriter locally with `npm run dev` or serve the built `dist/` folder over plain HTTP on your own machine.
 
 ### Option A: Deploy to GitHub Pages (Easiest for Static Releases)
 
@@ -116,11 +101,8 @@ If you are publishing repository pages directly to GitHub pages, you can easily 
      }
    })
    ```
-2. **Setup Environment Variables**:
-   Since GitHub Pages is static and variables defined during client-side compilation are bundled directly in the output:
-   - Go to your repository **Settings > Secrets and Variables > Actions**.
-   - Create a repository secret named `GEMINI_API_KEY` containing your API key.
-   - Use a GitHub action script to inject this keyword during compilation step.
+2. **Build & Publish**:
+   Use a standard GitHub Actions Vite workflow (build with `npm run build`, publish the `dist/` folder to Pages). No secrets or environment variables are required.
 
 ### Option B: Deploy to Vercel, Netlify, or Cloudflare Pages (Recommended)
 
@@ -130,9 +112,7 @@ Modern hosting platforms automatically detect Vite configurations and manage pip
 2. Configure **Build Settings**:
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
-3. Configure **Environment Variables**:
-   - Add a key for **`GEMINI_API_KEY`** with your official Gemini Token so clients can resolve backend cloud revisions successfully.
-4. Deploy! Your URL endpoint is automatically provisioned with fully secure TLS handshakes.
+3. Deploy! No environment variables are needed. Your URL endpoint is automatically provisioned with fully secure TLS handshakes.
 
 ---
 

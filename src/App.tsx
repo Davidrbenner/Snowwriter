@@ -4,8 +4,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
-import { 
+import {
   Snowflake, 
   PenLine, 
   Sparkles, 
@@ -38,9 +37,6 @@ import {
   Bookmark
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-
-// Initialize Gemini API
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 type AppVersion = 'web' | 'desktop';
 
@@ -136,7 +132,7 @@ export default function App() {
   const [workspaceType, setWorkspaceType] = useState<'text' | 'outlook' | 'gmail'>('text');
   
   // Local/Offline Engine & Model states
-  const [engineType, setEngineType] = useState<'cloud' | 'webgpu' | 'ollama'>('cloud');
+  const [engineType, setEngineType] = useState<'webgpu' | 'ollama'>('ollama');
   const [offlineTab, setOfflineTab] = useState<'models' | 'tools'>('models');
   const [downloadProgress, setDownloadProgress] = useState<{[key: string]: number}>({
     'gemma-2b': 0, // 0 = not downloaded, 100 = completed, in between = progress
@@ -287,106 +283,71 @@ export default function App() {
     
     showToast("Snowwriter", toastMsg);
 
-    // If local/offline engine is active
-    if (engineType !== 'cloud') {
-      if (engineType === 'webgpu') {
-        if (downloadProgress[activeLocalModel] < 100) {
-          showToast("Engine Activation Error", `Please download the active model (${activeLocalModel}) first!`);
-          setIsProcessing(false);
-          return;
-        }
-      }
-
-      setLocalInferenceLogs([
-        "Initializing offline execution pipeline...",
-        `Engine Type: ${engineType === 'webgpu' ? 'WebGL2/WebGPU Neural Core (100% Client-Side)' : 'Ollama Local Daemon Service'}`,
-        `Target weights: ${engineType === 'webgpu' ? activeLocalModel : ollamaModel}`,
-      ]);
-
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setLocalInferenceLogs(prev => [
-        ...prev,
-        "System Memory Allocation success (VRAM/RAM lock secured)...",
-        "Loading token dictionary map..."
-      ]);
-
-      await new Promise(resolve => setTimeout(resolve, 700));
-      setLocalInferenceLogs(prev => [
-        ...prev,
-        `Analyzing text parameter blocks: ${input.length} characters in sandbox`,
-        "Processing feed-forward attention nodes offline..."
-      ]);
-
-      // Attempt to communicate if running Ollama locally
-      if (engineType === 'ollama') {
-        try {
-          const res = await fetch(`${ollamaUrl}/api/generate`, {
-            method: 'POST',
-            body: JSON.stringify({
-              model: ollamaModel,
-              prompt: `${mode === 'grammar' ? 'Grammar check' : mode === 'rewrite' ? 'Rewrite professionally' : 'Rewrite casually'}: ${input}`,
-              stream: false
-            })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data.response) {
-              setOutput(data.response.trim());
-              setLocalInferenceLogs(prev => [...prev, "Inference fully completed! Output stream finalized local handshake."]);
-              showToast("Local Ollama Success", "Refined via local Ollama instance.");
-              setIsProcessing(false);
-              return;
-            }
-          }
-        } catch (err) {
-          console.log("Local Ollama endpoint not reachable. Processing with high-performance local rules fallback.");
-        }
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 600));
-      const rewritten = localRuleRewrite(input, mode);
-      setOutput(rewritten);
-      
-      setLocalInferenceLogs(prev => [
-        ...prev,
-        "Completed offline model inference state successfully.",
-        "Zero data transferred outside this machine.",
-        `Inference speed rating: ~45.6 tokens/sec`
-      ]);
-
-      showToast("Offline Processing Success", "Text processed securely locally!");
+    if (engineType === 'webgpu' && downloadProgress[activeLocalModel] < 100) {
+      showToast("Engine Activation Error", `Please download the active model (${activeLocalModel}) first!`);
       setIsProcessing(false);
       return;
     }
 
-    // Cloud Gemini API pipeline
-    let systemInstruction = "";
-    if (mode === 'grammar') {
-      systemInstruction = "You are a strict grammar checker. Fix the grammar of the following text. Do not add explanations or conversational filler, just return the fixed text.";
-    } else if (mode === 'rewrite') {
-      systemInstruction = "You are an expert editor. Rewrite the following text to be highly professional, clear, and engaging. Do not add explanations or conversational filler, just return the rewritten text.";
-    } else if (mode === 'casual') {
-      systemInstruction = "You are a friendly writing assistant. Rewrite the following text to be casual, human-like, and conversational. Use a relaxed tone, but keep the core meaning. Do not add explanations or conversational filler, just return the rewritten text.";
+    setLocalInferenceLogs([
+      "Initializing offline execution pipeline...",
+      `Engine Type: ${engineType === 'webgpu' ? 'WebGL2/WebGPU Neural Core (100% Client-Side)' : 'Ollama Local Daemon Service'}`,
+      `Target weights: ${engineType === 'webgpu' ? activeLocalModel : ollamaModel}`,
+    ]);
+
+    await new Promise(resolve => setTimeout(resolve, 600));
+    setLocalInferenceLogs(prev => [
+      ...prev,
+      "System Memory Allocation success (VRAM/RAM lock secured)...",
+      "Loading token dictionary map..."
+    ]);
+
+    await new Promise(resolve => setTimeout(resolve, 700));
+    setLocalInferenceLogs(prev => [
+      ...prev,
+      `Analyzing text parameter blocks: ${input.length} characters in sandbox`,
+      "Processing feed-forward attention nodes offline..."
+    ]);
+
+    // Attempt to communicate if running Ollama locally
+    if (engineType === 'ollama') {
+      try {
+        const res = await fetch(`${ollamaUrl}/api/generate`, {
+          method: 'POST',
+          body: JSON.stringify({
+            model: ollamaModel,
+            prompt: `${mode === 'grammar' ? 'Grammar check' : mode === 'rewrite' ? 'Rewrite professionally' : 'Rewrite casually'}: ${input}`,
+            stream: false
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.response) {
+            setOutput(data.response.trim());
+            setLocalInferenceLogs(prev => [...prev, "Inference fully completed! Output stream finalized local handshake."]);
+            showToast("Local Ollama Success", "Refined via local Ollama instance.");
+            setIsProcessing(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.log("Local Ollama endpoint not reachable. Processing with high-performance local rules fallback.");
+      }
     }
 
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: input,
-        config: {
-          systemInstruction,
-        },
-      });
+    await new Promise(resolve => setTimeout(resolve, 600));
+    const rewritten = localRuleRewrite(input, mode);
+    setOutput(rewritten);
 
-      setOutput(response.text || 'No response from AI.');
-      showToast("Success", "Text has been refined.");
-    } catch (error) {
-      console.error('Error processing text:', error);
-      setOutput('Error: Failed to process text. Please try again.');
-      showToast("Error", "Failed to reach the AI engine.");
-    } finally {
-      setIsProcessing(false);
-    }
+    setLocalInferenceLogs(prev => [
+      ...prev,
+      "Completed offline model inference state successfully.",
+      "Zero data transferred outside this machine.",
+      `Inference speed rating: ~45.6 tokens/sec`
+    ]);
+
+    showToast("Offline Processing Success", "Text processed securely locally!");
+    setIsProcessing(false);
   }, [input, isProcessing, engineType, activeLocalModel, downloadProgress, ollamaModel, ollamaUrl]);
 
   const handleCopy = useCallback(() => {
@@ -705,7 +666,7 @@ export default function App() {
               {/* Right Side: Output & Offline Controls */}
               <div className="lg:col-span-5 flex flex-col gap-6">
                 <AnimatePresence mode="wait">
-                  {isProcessing && engineType !== 'cloud' ? (
+                  {isProcessing ? (
                     <motion.div
                       key="terminal-logs"
                       initial={{ opacity: 0, scale: 0.95 }}
@@ -807,19 +768,13 @@ export default function App() {
                         <p className="text-[9px] text-ice-400 font-bold uppercase tracking-wider">Local-First Sandbox Core</p>
                       </div>
                     </div>
-                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide ${engineType === 'cloud' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100 animate-pulse'}`}>
-                      {engineType === 'cloud' ? 'Cloud Gemini' : engineType === 'webgpu' ? 'Local WebGPU' : 'Local Ollama'}
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-600 border border-emerald-100 animate-pulse">
+                      {engineType === 'webgpu' ? 'Local WebGPU' : 'Local Ollama'}
                     </span>
                   </div>
 
                   {/* Engine Switcher */}
-                  <div className="grid grid-cols-3 gap-1 bg-ice-100/50 p-1 rounded-xl border border-ice-100">
-                    <button
-                      onClick={() => setEngineType('cloud')}
-                      className={`py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${engineType === 'cloud' ? 'bg-white text-ice-800 shadow-sm' : 'text-ice-400 hover:text-ice-700'}`}
-                    >
-                      Google Cloud
-                    </button>
+                  <div className="grid grid-cols-2 gap-1 bg-ice-100/50 p-1 rounded-xl border border-ice-100">
                     <button
                       onClick={() => setEngineType('webgpu')}
                       className={`py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${engineType === 'webgpu' ? 'bg-white text-ice-800 shadow-sm' : 'text-ice-400 hover:text-ice-700'}`}
@@ -837,13 +792,6 @@ export default function App() {
                   </div>
 
                   {/* Panel view depending on active engine type */}
-                  {engineType === 'cloud' && (
-                    <div className="text-xs text-ice-600 leading-relaxed bg-[#f1fcf5]/30 p-4 rounded-2xl border border-emerald-100">
-                      <p className="mb-2">⚡ Currently operating on cloud servers with <strong>Gemini 3 Flash</strong>.</p>
-                      <p>For complete privacy, zero hosting, and zero network usage, switch to <strong className="text-ice-800">WebGPU</strong> or <strong className="text-ice-800">Ollama</strong> to compute everything purely locally in your sandbox!</p>
-                    </div>
-                  )}
-
                   {engineType === 'webgpu' && (
                     <div className="space-y-3">
                       <div className="flex gap-2 border-b border-ice-50 pb-2">
@@ -1199,7 +1147,7 @@ private async void OnHotkey() {
                         <p>• Google Workspace Add-on using Apps Script</p>
                         <p>• Browser Extension targeting Gmail's compose body</p>
                         <p>• Directly update draft text with Chrome extension APIs</p>
-                        <p>• Seamlessly integrate with Gemini or local rest endpoints</p>
+                        <p>• Seamlessly integrate with local REST endpoints (e.g. Ollama)</p>
                       </div>
                     </div>
                   </div>
@@ -1255,7 +1203,7 @@ private async void OnHotkey() {
       <footer className="w-full max-w-5xl mt-16 pb-12 flex flex-col md:flex-row items-center justify-between gap-6 border-t border-ice-200 pt-12">
         <div className="flex items-center gap-3 text-ice-400 text-sm font-medium">
           <Snowflake className="w-5 h-5" />
-          <span>Snowwriter Suite © 2026 • Powered by Gemini & Gemma</span>
+          <span>Snowwriter Suite © 2026 • 100% Local AI</span>
         </div>
         <div className="flex gap-8 text-sm font-black text-ice-500">
           <a href="#" className="hover:text-ice-900 transition-colors">Documentation</a>
