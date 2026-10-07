@@ -1,129 +1,82 @@
-# ❄️ Snowwriter
+# Snowwriter
 
-Snowwriter is a sleek, professional, distraction-free AI-powered grammar checker and text rewriting application. It features a modern, ultra-clean "Icy" design built with **React**, **Vite**, and **Tailwind CSS**. 
+[![CI](https://github.com/Davidrbenner/Snowwriter/actions/workflows/ci.yml/badge.svg)](https://github.com/Davidrbenner/Snowwriter/actions/workflows/ci.yml)
 
-Snowwriter is built on an **Offline-First / Zero-Hosting / Local-Inference** model: all AI processing happens on your machine by connecting to an existing local **Ollama** installation. There are **no cloud APIs and no API keys** — nothing to configure, and no text ever leaves your device. An in-browser **WebGPU** engine is planned (the current UI for it is a demo — see Features below).
+A local-first writing assistant. Paste text, pick a mode (fix grammar, rewrite professionally, or rewrite casually), and Snowwriter runs it through a language model on your own machine with [Ollama](https://ollama.com/). No cloud APIs, no API keys, and your text never leaves your computer.
 
----
+![Snowwriter screenshot](docs/screenshot.png)
 
-## ✨ Features
+## Features
 
-- **Local Engine Choice**:
-  - **Ollama Integration**: Point Snowwriter at a locally running Ollama daemon (e.g. at `http://localhost:11434`) and any model tag you have pulled. If an Ollama instance is reachable, requests are processed by it — 100% locally. If not, a simple built-in rule-based rewriter is used as a fallback.
-  - **WebGPU Neural Core** *(demo / UI prototype)*: The model download hub and in-browser inference are currently simulated for demonstration — no real model weights are downloaded, and processing uses the built-in rule-based rewriter. True WebGPU inference is on the roadmap.
-- **Workflow Integrations**:
-  - **General Text Editor**: Simple, elegant workspace for writing.
-  - **Outlook Draft** *(simulated)*: A mock Outlook compose UI for refining email drafts. No email is actually sent.
-  - **Gmail Draft** *(simulated)*: A mock Gmail compose UI for the same workflow. No email is actually sent.
-- **Productivity Boosters**:
-  - **Drag-to-Bookmark Bar**: A draggable JavaScript Web bookmarklet. Select text on any web page, click your bookmark, and it automatically imports that selection straight into your Snowwriter tab!
-  - **Global Script Triggers**: Quick-copy snippets for Windows AutoHotkey and macOS AppleScript to bind global system hotkeys to Snowwriter.
+- **Three rewrite modes:** grammar fix, professional tone, casual tone.
+- **Local LLM via Ollama:** works with any model you've pulled (`gemma2:2b`, `llama3.2`, `mistral`, and so on). A "Test connection" button checks the server and tells you if the model isn't installed.
+- **Offline fallback:** if Ollama isn't running, a small rule-based engine still fixes common shorthand ("u r" to "you are", "dont" to "don't"), capitalization, and spacing. The result shows which engine produced it.
+- **Email drafts:** Outlook-style and Gmail-style compose views. "Open in mail app" hands the draft to your default mail client through `mailto:`.
+- **Undo and redo** with Ctrl/Cmd+Z and Ctrl/Cmd+Y (or Shift+Z).
+- **Send text from anywhere:** a bookmarklet plus AutoHotkey (Windows) and AppleScript (macOS) snippets open your selected text in Snowwriter.
 
----
+## How it works
 
-## 🚀 Getting Started
-
-### 1. Prerequisites
-
-Make sure you have [Node.js](https://nodejs.org/) installed (v18 or higher is recommended) along with `npm`.
-
-### 2. Installation
-
-Clone your repository from GitHub and install the base dependencies:
-
-```bash
-git clone https://github.com/your-username/snowwriter.git
-cd snowwriter
-npm install
+```
+Editor ──> processText(mode)
+             │
+             ├─> lib/ollama.ts   POST /api/generate  (local Ollama server)
+             │        │ fails or times out
+             │        v
+             └─> lib/rewriter.ts  rule-based fallback
 ```
 
-### 3. (Optional) Set Up Ollama
+| File | What it does |
+| --- | --- |
+| `src/lib/ollama.ts` | Ollama client: prompt building, `/api/tags` health check, `/api/generate` with timeouts |
+| `src/lib/rewriter.ts` | Offline rules compiled into a single regex per mode, longest phrase first, word-boundary safe |
+| `src/lib/history.ts` | Pure undo/redo state with a capped history |
+| `src/App.tsx` | UI (React 19, Tailwind CSS 4, Motion) |
 
-For real AI-powered rewriting, install [Ollama](https://ollama.com/) and pull a model:
+The logic lives in small, pure modules so it can be unit tested without a browser.
+
+## Getting started
+
+Requires Node.js 20 or newer.
+
+```bash
+git clone https://github.com/Davidrbenner/Snowwriter.git
+cd Snowwriter
+npm install
+npm run dev        # http://localhost:3000
+```
+
+For real AI rewriting, install Ollama and pull a small model:
 
 ```bash
 ollama pull gemma2:2b
 ```
 
-No API keys or environment variables are needed — Snowwriter talks to Ollama at `http://localhost:11434` (configurable in the app's Local AI Controller panel). Without Ollama, the app still runs using a basic built-in rule-based rewriter.
+Without Ollama the app still works, using the offline rules.
 
-### 4. Running Locally in Development
+## Scripts
 
-Launch the Vite build engine with local watcher channels:
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the dev server |
+| `npm test` | Run unit tests (Vitest) |
+| `npm run typecheck` | TypeScript strict mode check |
+| `npm run build` | Production build to `dist/` |
+| `npm run check` | Typecheck, test, and build (same as CI) |
 
-```bash
-npm run dev
-```
+GitHub Actions runs `typecheck`, `test`, and `build` on every push and pull request.
 
-Your browser will launch and load the application live at **`http://localhost:3000`**.
+## A note on hosting
 
----
+Snowwriter builds to static files, so it can be hosted anywhere. Browsers block an HTTPS page from calling `http://localhost`, so a hosted copy usually can't reach your local Ollama and will use the offline rules. For full AI rewriting, run it locally.
 
-## 📦 Building and Publishing
+## Roadmap
 
-### 1. Verification Checking
+- In-browser inference with WebGPU (WebLLM or Transformers.js), so no Ollama install is needed
+- Streaming output from Ollama
+- Inline diff view showing what changed
+- Browser extension for rewriting text directly in Gmail and other sites
 
-To check TypeScript type alignments and capture static safety before deploying:
+## License
 
-```bash
-npm run lint
-```
-
-### 2. Build for Production
-
-Compile a optimized, production-ready static site output:
-
-```bash
-npm run build
-```
-
-The build assets (CSS, highly-compressed Javascript, static file wrappers) will build cleanly inside the `/dist` directory.
-
----
-
-## 🌐 Deploying to GitHub & the Web
-
-Since Snowwriter compiles into static SPA files with **no API keys or secrets**, it can be hosted completely **free** on multiple serverless and edge networks — there is nothing sensitive in the bundle.
-
-> **Note on hosted deployments**: the AI engine runs on each visitor's own machine. Visitors need their own Ollama installation, and because browsers block requests from an HTTPS page to `http://localhost`, a hosted (HTTPS) copy of Snowwriter generally can't reach a local Ollama daemon — visitors will get the rule-based fallback instead. For the full experience, run Snowwriter locally with `npm run dev` or serve the built `dist/` folder over plain HTTP on your own machine.
-
-### Option A: Deploy to GitHub Pages (Easiest for Static Releases)
-
-If you are publishing repository pages directly to GitHub pages, you can easily set up standard GitHub Actions pipelines to deploy automatically:
-
-1. **Configure Repository Base Path**:
-   If your repository is hosted at `https://your-username.github.io/snowwriter/`, you'll want to add the `base` property to your `vite.config.ts` so asset routing maps correctly:
-   ```typescript
-   export default defineConfig(({mode}) => {
-     return {
-       base: '/snowwriter/', // Make sure this matches your repository name!
-       // ... existing plugins and configs
-     }
-   })
-   ```
-2. **Build & Publish**:
-   Use a standard GitHub Actions Vite workflow (build with `npm run build`, publish the `dist/` folder to Pages). No secrets or environment variables are required.
-
-### Option B: Deploy to Vercel, Netlify, or Cloudflare Pages (Recommended)
-
-Modern hosting platforms automatically detect Vite configurations and manage pipeline environment variables with pristine ease.
-
-1. Create a new project in your platform configuration panel connected to your GitHub repository.
-2. Configure **Build Settings**:
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-3. Deploy! No environment variables are needed. Your URL endpoint is automatically provisioned with fully secure TLS handshakes.
-
----
-
-## 🧠 Customizing Offline Models
-
-Snowwriter is built with model flexibility:
-- If someone already has standard model targets installed (such as via Ollama running in the background), they can select the **Ollama** engine tab, reference the customizable endpoint, and enter any model tag they want (like `llama3`, `mistral`, or a custom fine-tune).
-- The **WebGPU** model list in `src/App.tsx` is currently display-only (the downloads are simulated). It's the natural starting point if you want to contribute real in-browser inference — e.g. by wiring the list up to [MLC WebLLM](https://github.com/mlc-ai/web-llm) or [Transformers.js](https://github.com/huggingface/transformers.js).
-
----
-
-## 📜 License
-
-This project is licensed under the Apache-2.0 License. See the LICENSE file for details.
+Apache-2.0. See [LICENSE](LICENSE).
